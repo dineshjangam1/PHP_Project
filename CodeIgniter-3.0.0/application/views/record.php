@@ -1,0 +1,142 @@
+<?php
+session_start();
+include '../models/SaltHash.php';
+include '../libraries/database.php';
+
+$salthash = new SaltHash;
+$hashref = $salthash->hashRef();
+
+$conn = dbConnect();
+
+$name = $hashref.'.wav';
+$path = 'audio/'.$name;
+$rpath = "audio/save_file.php?filename=".$name;
+$cat =0;
+$replyto ='';
+if(isset($_POST['cat']))
+{
+	$c = $_POST['cat'];
+	if(strcmp($c,'books')===0)
+	{
+		$c = 'Books';
+		$cat = 1;
+	}
+	if(strcmp($c,'music')===0)
+	{
+		$c = 'Music';
+		$cat =2;
+	}
+	if(strcmp($c,'sports')===0)
+	{
+		$c = 'Sports';
+		$cat = 3;
+	}
+	if(strcmp($c,'misc')==0)
+	{
+		$c = 'Misc';
+		$cat = 5;
+	}
+//	$results = $conn->query("Select catid from categories where category = ".$c);
+//	if($results->num_rows > 0)
+//	{
+//		$row = $results->fetch_assoc();
+//		$cat = $row['catid'];
+//	}
+}
+
+if(isset($_POST['ref']))
+{
+	$replyto = $_POST['ref'];
+}
+?>
+<!DOCTYPE html>
+<html>
+	<head>
+		<script type="text/javascript" src="recordingeg/js/main.js"></script>
+  		<script type="text/javascript" src="recordingeg/js/recorderjs/recorder.js"></script>
+	</head>
+	<body>
+<div>
+<div id="status1">
+	<div id="recorder"></div><div id ="isRec"><canvas id="myCanvas" width="12" height="12" hidden ="true"></canvas><div id="counter"></div></div><div id="player1"></div>
+			<!--<audio id ="rDing" controls="none" preload="auto" style="display: none;">
+				<source src="audio/recordingDing.mp3" type="audio/mpeg">
+			</audio>
+			<audio id ="sDing" controls="none" preload="auto" style="display: none;">
+				<source src="audio/stopDing.mp3" type="audio/mpeg">
+			</audio>-->
+            <button id="record" onclick="toggleRecording(this)" alt="Click here to start recording">Record/Stop Recording</button>
+            <!--<button id="play" disabled ="true" onclick="buttonHandling('1','<?php print($name);?>')">Play/Stop Playing</button>--> 
+            <div id="timer" class="time"></div>
+   	
+		<form>
+			<input id="recInput1" type="hidden" name="hashref" value="<?php print($hashref); ?>" />
+			<input id="recInput2" type="hidden" name="cat" value="<?php print($cat); ?>" />
+			<input id="recInput3" type="hidden" name="replyto" value="<?php print($replyto); ?>" />
+			<table>
+				<tr>
+					<td>Recording Name:</td><td><input id='soundName' name ='name' type="text" alt="recording name" /></td>
+				</tr>
+				<tr>
+					<!--<td>Brief Description:</td><td><input id='soundDesc' name='desc' type="text" alt="brief description" /></td>-->
+				</tr>
+				<tr>
+					<td>Access Level:</td>
+					<td><select name="access" id = "acclvl" title="access level">
+						<?php
+							$string1= '<option value="0" alt="Anyone can access">Public</option>';
+							$string2= '<option value="1" alt="Only your connections can access">Connections Only</option>';
+							$string3= '<option value="3" alt="Only you can access">Private</option>';
+																				
+							if((isset($_POST['ref']))&&(!isset($_POST['mess'])))
+							{
+								//comments share the privacy setting of the original audio
+								$statement = "Select access_lvl from audio where hashref = '".$replyto."'";
+								$rs = $conn->query($statement);
+								$row = $rs->fetch_assoc();
+								$acc = $row['access_lvl'];
+								if($acc == 0)
+								{
+									echo $string1;
+								}
+								elseif($acc == 1)
+								{
+									echo $string2;
+								}
+								else 
+								{
+									echo $string3;
+								}
+							}
+							else
+							{
+								//set to default access level
+								if($_SESSION['access']==0)
+								{
+									echo $string1.$string2.$string3;
+								}
+								elseif ($_SESSION['access']==1) 
+								{
+									echo $string2.$string1.$string3;
+								}
+								else 
+								{
+									echo $string3.$string1.$string2; 	
+								} 						
+							}							
+						?>
+						</select></td>					
+				</tr>
+				<tr>
+					<td><input type="button" value="Submit" onclick="sendAudio(<?php print "'".$hashref."'"; ?>)" /></td>
+					<td><input type="button" value="Cancel" onclick="hideRec(true)" /></td>
+				</tr>
+			</table>
+		</form>
+		<div id="stateD"></div>
+	<div id="flash"></div>
+	<noscript>WAMI requires Javascript</noscript>
+</div>
+</div>
+</body>
+</html>

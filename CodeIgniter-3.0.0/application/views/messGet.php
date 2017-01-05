@@ -1,0 +1,103 @@
+	<?php
+	session_start();
+    include '../libraries/database.php';
+	
+	$conn = dbConnect();
+	$user = $_SESSION['userid'];
+	$type = $_POST['type'];
+	$sessUser = $_SESSION['userid'];
+	$cat['books'] = 1;
+	$cat['music'] = 2;
+	$cat['sports'] = 3;
+	$cat['misc']=5;
+	//$output ="<h8>".strtoupper($type)." Messages</h8><br>";
+	$str = "From: ";
+	//str = "";
+	$sor = 0;// 0 = sent; 1 = recv
+	//
+	$sql ='';
+	if(strcmp($type, 'receiver')==0)
+	{
+		$str = "From: ";
+		$sql="Select name,hashref,upload_date,sender From audio,messages Where messages.aid = audio.aid And deleted = 0 AND receiver = ".$user." ORDER BY upload_date DESC";
+	}
+	else if(strcmp($type, 'sent')==0)
+	{
+		$str = "To: ";
+		$sor=1;
+		$sql="Select name,hashref,upload_date,receiver From audio,messages Where messages.aid = audio.aid And deleted = 0 AND sender = ".$user." ORDER BY upload_date DESC";
+	}
+	
+	if(strcmp($type, 'comp')!=0)
+	{
+		$rs = $conn->query($sql);
+		
+		if (mysqli_num_rows($rs) > 0) 
+		{
+		    // output links for each audio
+		    while($row = $rs->fetch_assoc()) 
+		    {
+		    	$utype = 'receiver';
+		    	if($sor===0)
+				{
+					//sor is recv thus need to get senders
+					$utype = 'sender';
+				}
+				else 
+				{
+					//sor is sent thus need to get recipients
+					$utype = 'receiver';
+				}
+				$sql = "Select firstname, lastname from users where uid ='".$row[$utype]."'";
+				$rs2 = $conn->query($sql);
+				if (mysqli_num_rows($rs2) > 0)
+				{
+					$rw = $rs2->fetch_assoc();
+					$uu = $rw['firstname'];
+					$uu2 = $rw['lastname'];
+	        		$output = $output."<table><tr><td>".$str.$uu."&nbsp;".$uu2."<br>&nbsp;</td></tr>";
+				}
+				
+		        $output = $output."<tr><td><audio controls style='height:35px;width:200px;'><source src='audio/".$row['hashref'].".mp3' type='audio/mpeg'>Your browser does not support the audio element.</audio><br>&nbsp;</td></tr><tr><td> Sent: " . $row["upload_date"]. "<br><br></td></tr></table>";
+		    }
+		} 
+		else 
+		{
+	    	$output = $output."0 results";
+			$output = $output."<br>".$conn->error;
+		}
+	}
+	else
+	{
+		//compose section. show list of contacts to sent messages to.
+		$output = $output."Select a connection from the list below to record a message to send:<br>";
+		$sql = "Select uid,firstname, lastname from connections,users where friend_id1='".$user."' And uid = friend_id2";
+		$sql2 = "Select uid,firstname, lastname from connections,users where friend_id2='".$user."' And uid = friend_id1";
+		$ecn = 0;
+		$rs = $conn->query($sql);
+		$rs2 = $conn->query($sql2);
+		if (mysqli_num_rows($rs) > 0)
+		{
+			while($row = $rs->fetch_assoc())
+			{
+				$output = $output.'<a href="#" onclick="messRec(\''.$row["uid"].'\')">'.$row["firstname"]." ".$row["lastname"].'</a><br>';
+			}
+		}
+		else 
+		{
+			$output = $output.$conn->error;
+		}
+		if (mysqli_num_rows($rs2) > 0)
+		{
+			while($row = $rs2->fetch_assoc())
+			{
+				$output = $output.'<a href="#" onclick="messRec('.$row["uid"].')">'.$row["firstname"]." ".$row["lastname"].'</a><br>';
+			}
+		}
+		else 
+		{
+			$output = $output.$conn->error;
+		}
+	}
+	echo $output;
+?>
